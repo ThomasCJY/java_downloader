@@ -3,17 +3,20 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Scanner;
 import java.util.concurrent.*;
+import java.util.logging.Logger;
 
 /**
  * Created by Kayuk on 1/10/16.
  */
 public class MultiThreadDownloader implements Runnable {
     private String path;
+    private String dir;
     private InputStream input;
     private byte[] tempb;
     private int count_N;
 
-    public MultiThreadDownloader(String path) {
+    public MultiThreadDownloader(String path, String dir) {
+        this.dir = dir;
         this.path = path;
     }
 
@@ -26,11 +29,13 @@ public class MultiThreadDownloader implements Runnable {
 
         // Open output file
         String filename = link.getFile().substring(link.getFile().lastIndexOf('/') + 1);
-        RandomAccessFile raf = new RandomAccessFile(filename, "rw");
+        String absAddress = dir + File.separator + filename;
+        Logger.getGlobal().info(absAddress);
+        RandomAccessFile raf = new RandomAccessFile(absAddress, "rw");
         long length = 0;
 
         // Check record-stop-point file, update the position
-        String bakFileName = filename + ".bak";
+        String bakFileName = absAddress + ".bak";
         File backFile = new File(bakFileName);
 
         long pos = 0;
@@ -119,12 +124,14 @@ public class MultiThreadDownloader implements Runnable {
 
 
     public static void main(String[] args) {
+        File defaultFilePath = new File(".");
+        String filePath = defaultFilePath.getAbsolutePath();
         String path1 = "https://download.jetbrains.com/webide/PhpStorm-10.0.3-custom-jdk-bundled.dmg";
         String path2 = "https://download.jetbrains.com/idea/ideaIC-15.0.2-custom-jdk-bundled.dmg";
 //        String path2 = "http://bankinside.ru/sites/default/files/world-economy/tom-cruise.jpg";
 //        String path1 = "http://cdn.playbuzz.com/cdn/1652d10b-884c-49c5-8450-59af40ca8832/9c36c2b7-cdd3-4baf-8c4a-af35f9371383_560_420.jpg";
-        Runnable r1 = new MultiThreadDownloader(path1);
-        Runnable r2 = new MultiThreadDownloader(path2);
+        Runnable r1 = new MultiThreadDownloader(path1, filePath);
+        Runnable r2 = new MultiThreadDownloader(path2, filePath);
         Thread t1 = new Thread(r1);
         Thread t2 = new Thread(r2);
         t1.start();

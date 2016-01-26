@@ -1,5 +1,6 @@
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -11,7 +12,7 @@ import java.util.logging.Logger;
  */
 public class UIDownloader extends JPanel
         implements ActionListener{
-    JButton dirButton;
+    JButton dirButton, taskButton, startButton, stopButton;
     JFileChooser fc;
     JTextField jfield;
     File savePath;
@@ -19,7 +20,7 @@ public class UIDownloader extends JPanel
     public UIDownloader(){
         savePath = new File(".");
 
-        jfield = new JTextField(20);
+        jfield = new JTextField(40);
         jfield.setEditable(false);
 
         fc = new JFileChooser();
@@ -28,13 +29,47 @@ public class UIDownloader extends JPanel
         dirButton = new JButton("Choose Path");
         dirButton.addActionListener(this);
 
+        taskButton = new JButton("New Task");
+        taskButton.addActionListener(this);
 
+        stopButton = new JButton("Stop All");
+        stopButton.addActionListener(this);
 
-        JPanel buttonPanel = new JPanel();
+        startButton = new JButton("Restart All");
+        startButton.addActionListener(this);
 
-        buttonPanel.add(dirButton);
-        buttonPanel.add(jfield);
-        add(buttonPanel);
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0;
+        c.gridy = 0;
+        panel.add(dirButton,c);
+
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 1;
+        c.gridy = 0;
+        c.gridwidth = 2;
+        panel.add(jfield,c);
+
+        c.gridwidth = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0;
+        c.gridy = 1;
+        panel.add(taskButton,c);
+
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 1;
+        c.gridy = 1;
+        panel.add(stopButton,c);
+
+        c.gridwidth = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 2;
+        c.gridy = 1;
+        panel.add(startButton,c);
+
+        add(panel);
     }
 
     @Override
@@ -50,6 +85,16 @@ public class UIDownloader extends JPanel
             } else {
                 Logger.getGlobal().info("Cancel Path Choosing");
             }
+        }if (e.getSource() == taskButton){
+            String address = JOptionPane.showInputDialog(
+                    "Please input the url of the resource",
+                    "http://cdn.playbuzz.com/cdn/1652d10b-884c-49c5-8450-59af40ca8832/9c36c2b7-cdd3-4baf-8c4a-af35f9371383_560_420.jpg");
+            Logger.getGlobal().info(address);
+
+            Runnable task = new MultiThreadDownloader(address, savePath.getAbsolutePath());
+            Thread thread = new Thread(task);
+
+            thread.start();
         }
 
     }
