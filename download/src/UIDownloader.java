@@ -3,7 +3,17 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -11,13 +21,20 @@ import java.util.logging.Logger;
  * Created by Kayuk on 1/10/16.
  */
 public class UIDownloader extends JPanel
-        implements ActionListener{
+        implements ActionListener, PropertyChangeListener{
+    ExecutorService pool;
     JButton dirButton, taskButton, startButton, stopButton;
+    JPanel panel, prgPanel;
     JFileChooser fc;
     JTextField jfield;
+    HashMap<String, JProgressBar> jbarList;
     File savePath;
+    AtomicInteger counter;
 
     public UIDownloader(){
+        jbarList = new HashMap<String, JProgressBar>();
+        pool = Executors.newFixedThreadPool(5);
+        counter = new AtomicInteger(1);
         savePath = new File(".");
 
         jfield = new JTextField(40);
@@ -38,7 +55,7 @@ public class UIDownloader extends JPanel
         startButton = new JButton("Restart All");
         startButton.addActionListener(this);
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        panel = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
 
         c.fill = GridBagConstraints.HORIZONTAL;
@@ -69,6 +86,15 @@ public class UIDownloader extends JPanel
         c.gridy = 1;
         panel.add(startButton,c);
 
+
+        prgPanel = new JPanel();
+
+        c.gridwidth = 3;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0;
+        c.gridy = 2;
+        panel.add(prgPanel,c);
+
         add(panel);
     }
 
@@ -85,16 +111,32 @@ public class UIDownloader extends JPanel
             } else {
                 Logger.getGlobal().info("Cancel Path Choosing");
             }
-        }if (e.getSource() == taskButton){
+        }else if (e.getSource() == taskButton){
             String address = JOptionPane.showInputDialog(
                     "Please input the url of the resource",
                     "http://cdn.playbuzz.com/cdn/1652d10b-884c-49c5-8450-59af40ca8832/9c36c2b7-cdd3-4baf-8c4a-af35f9371383_560_420.jpg");
             Logger.getGlobal().info(address);
 
-            Runnable task = new MultiThreadDownloader(address, savePath.getAbsolutePath());
-            Thread thread = new Thread(task);
+            JProgressBar jbar= new JProgressBar(0, 100);
+            jbar.setValue(0);
+            jbar.setStringPainted(true);
+            prgPanel.add(jbar);
+            prgPanel.revalidate();
+            validate();
 
-            thread.start();
+            PropertyChangeSupport pcs = new PropertyChangeSupport(this);
+            String threadName = String.valueOf(counter.getAndIncrement());
+            Runnable task = new MultiThreadDownloader(address, savePath.getAbsolutePath(), pcs, threadName);
+            pcs.addPropertyChangeListener(this);
+            jbarList.put(threadName, jbar);
+            pool.submit(task);
+        }else if(e.getSource() == stopButton){
+            if (pool.isShutdown()) return;
+            else pool.shutdownNow();
+        }else if(e.getSource() == startButton){
+            // restart
+
+
         }
 
     }
@@ -105,6 +147,15 @@ public class UIDownloader extends JPanel
         jFrame.add(new UIDownloader());
         jFrame.pack();
         jFrame.setVisible(true);
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        String tname = evt.getPropertyName();
+        int progress = (Integer)evt.getNewValue();
+        JProgressBar jbar = jbarList.get(tname);
+        jbar.setValue(progress);
+        Logger.getGlobal().info("New Value = " + evt.getNewValue());
     }
 
     public static void main(String[] args){
