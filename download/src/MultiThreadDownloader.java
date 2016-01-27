@@ -1,3 +1,4 @@
+import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -14,13 +15,26 @@ public class MultiThreadDownloader implements Runnable {
     private InputStream input;
     private byte[] tempb;
     private int count_N;
+    private PropertyChangeSupport pcs = null;
+    private int progress = 0;
+    private String tid;
 
     public MultiThreadDownloader(String path, String dir) {
         this.dir = dir;
         this.path = path;
     }
 
+    public MultiThreadDownloader(String path, String dir, PropertyChangeSupport pcs, String id) {
+        this.dir = dir;
+        this.path = path;
+        this.pcs = pcs;
+        this.tid = id;
+        Logger.getGlobal().info("Thread id is: " + Thread.currentThread().getName());
+    }
+
     private void download() throws IOException {
+        Thread.currentThread().setName(tid);
+
         long threadId = Thread.currentThread().getId();
         System.out.printf("Thread# %d starts.\n", threadId);
         // open connection
@@ -79,6 +93,7 @@ public class MultiThreadDownloader implements Runnable {
                 }
             }
         };
+        Logger.getGlobal().info("Here:" + Thread.currentThread().getName());
 
         try {
             Future future = executor.submit(task);
@@ -87,8 +102,16 @@ public class MultiThreadDownloader implements Runnable {
                 raf.write(tempb, 0, count_N);
                 pos += count_N;
                 flag++;
-                if (flag % 500 == 0) {
-                    System.out.printf("Thread %d Downloading percentage %.2f %%\n", threadId, pos * 1.0 / length * 100);
+                if (flag % 100 == 0) {
+                    int percentage = (int)(pos*1.0 / length * 100);
+                    System.out.printf("Thread %d Downloading percentage %d %%\n", threadId, percentage);
+                    if (percentage > this.progress){
+                        if (pcs != null) {
+                            Logger.getGlobal().info(Thread.currentThread().getName());
+                            pcs.firePropertyChange(Thread.currentThread().getName(), this.progress ,percentage);
+                        }
+                        this.progress = percentage;
+                    }
                 }
                 future = executor.submit(task);
                 future.get(15, TimeUnit.SECONDS);
@@ -98,9 +121,12 @@ public class MultiThreadDownloader implements Runnable {
             ex.printStackTrace();
             writer.print(pos);
             return;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ex) {
             // handle the interrupts
-            e.printStackTrace();
+            System.out.println("Stop downloading...");
+            ex.printStackTrace();
+            writer.print(pos);
+            return;
         } catch (ExecutionException e) {
             // handle other exceptions
             e.printStackTrace();
