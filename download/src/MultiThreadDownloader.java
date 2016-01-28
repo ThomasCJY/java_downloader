@@ -29,12 +29,12 @@ public class MultiThreadDownloader implements Runnable {
         this.path = path;
         this.pcs = pcs;
         this.tid = id;
-        Logger.getGlobal().info("Thread id is: " + Thread.currentThread().getName());
     }
 
     private void download() throws IOException {
         Thread.currentThread().setName(tid);
 
+        Logger.getGlobal().info("Thread id is: " + Thread.currentThread().getName());
         long threadId = Thread.currentThread().getId();
         System.out.printf("Thread# %d starts.\n", threadId);
         // open connection
@@ -104,7 +104,7 @@ public class MultiThreadDownloader implements Runnable {
                 flag++;
                 if (flag % 100 == 0) {
                     int percentage = (int)(pos*1.0 / length * 100);
-                    System.out.printf("Thread %d Downloading percentage %d %%\n", threadId, percentage);
+                    //System.out.printf("Thread %d Downloading percentage %d %%\n", threadId, percentage);
                     if (percentage > this.progress){
                         if (pcs != null) {
                             Logger.getGlobal().info(Thread.currentThread().getName());
@@ -135,6 +135,7 @@ public class MultiThreadDownloader implements Runnable {
             writer.close();
             conn.disconnect();
         }
+        pcs.firePropertyChange(Thread.currentThread().getName(), 0 , 100);
         backFile.delete();
         System.out.printf("Thread# %d ends.\n", threadId);
     }
